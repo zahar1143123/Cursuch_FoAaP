@@ -10,6 +10,7 @@ int getIntInput() {
         cin.clear();
         cin.ignore(numeric_limits<streamsize>::max(), '\n');
     }
+    cin.ignore(numeric_limits<streamsize>::max(), '\n'); 
     return value;
 }
 
@@ -20,6 +21,8 @@ float getFloatInput() {
         cin.clear();
         cin.ignore(numeric_limits<streamsize>::max(), '\n');
     }
+
+    cin.ignore(numeric_limits<streamsize>::max(), '\n'); 
     return value;
 }
 
