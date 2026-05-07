@@ -55,6 +55,20 @@ void showMenu(Flight*& flights, int& n) {
             case 7: 
                 clearMem(flights, n); 
                 break;
+                        case 8:
+                // Вся логика спрятана в sort.cpp
+                handleSort(flights, n); 
+                break;
+
+            case 9:
+                // Вся логика спрятана в search.cpp
+                handleSearch(flights, n); 
+                break;
+
+            case 10:
+                // Вся логика спрятана в search.cpp
+                handleEditByIndex(flights, n); 
+                break;
         }
     } while (choice != 0);
 
