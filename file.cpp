@@ -6,27 +6,81 @@
 
 using namespace std;
 
-ofstream new_DB(const string& filename) {
-    ofstream file(filename, ios::out | ios::trunc);
-    if (file.fail())
-        cerr << "Ошибка создания файла\n";
-    return file;
+bool endsWith(const string& str, const string& suffix) {
+    if (suffix.size() > str.size()) return false;
+    return str.compare(str.size() - suffix.size(), suffix.size(), suffix) == 0;
+}
+
+string ensureExtension(const string& filename, const string& ext) {
+    if (endsWith(filename, ext)) return filename;
+    return filename + ext;
+}
+
+void new_DB(const string& filename, int format) {
+    if (format == 1) {
+        ofstream file(filename, ios::out | ios::trunc);
+        if (file.fail())
+            cerr << "Ошибка создания файла\n";
+        else
+            cout << "Текстовый файл создан.\n";
+    } else {
+        ofstream file(filename, ios::out | ios::trunc | ios::binary);
+        if (file.fail())
+            cerr << "Ошибка создания файла\n";
+        else
+            cout << "Двоичный файл создан.\n";
+    }
+}
+
+void create_DB() {
+    int format;
+    cout << "СОЗДАНИЕ ФАЙЛА\n";
+    cout << "1. Текстовый\n";
+    cout << "2. Двоичный\n";
+    cout << "0. Выход\n";
+    cout << "Ввод: ";
+    check_range(format, 2);
+
+    if (format == 0) return;
+
+    string filename;
+    cout << "Имя файла: ";
+    cin >> filename;
+    filename = ensureExtension(filename, (format == 1) ? ".txt" : ".bin");
+
+    if (filename == TEST_DATA_FILE) {
+        cerr << "Ошибка: нельзя перезаписать файл тестовых данных (" << TEST_DATA_FILE << ")!\n";
+        system("pause");
+        return;
+    }
+
+    new_DB(filename, format);
+    system("pause");
 }
 
 bool remove_DB(const string& filename) {
+    if (filename == TEST_DATA_FILE) {
+        cerr << "Ошибка: нельзя удалить файл тестовых данных (" << TEST_DATA_FILE << ")!\n";
+        return false;
+    }
     if (remove(filename.c_str()) == 0) return true;
     cerr << "Ошибка удаления\n";
     return false;
 }
 
-void clearMem(Flight*& arr, int& n) {
-    delete[] arr;
-    arr = nullptr;
-    n = 0;
+void clearMem(List& list) {
+    Node* curr = list.head;
+    while (curr) {
+        Node* next = curr->next;
+        delete curr;
+        curr = next;
+    }
+    list.head = list.tail = nullptr;
+    list.size = 0;
 }
 
-void save_DB(Flight* flights, int& n){
-    if (n == 0) {
+void save_DB(List& list){
+    if (list.size == 0) {
         cout << "Нет данных.\n";
         system("pause");
         return;
@@ -47,29 +101,37 @@ void save_DB(Flight* flights, int& n){
     string filename;
     cout << "Введите имя файла: ";
     cin >> filename;
+    if (num == 1 || num == 3) filename = ensureExtension(filename, ".txt");
+    else filename = ensureExtension(filename, ".bin");
+
+    if (filename == TEST_DATA_FILE) {
+        cerr << "Ошибка: нельзя записать/перезаписать файл тестовых данных (" << TEST_DATA_FILE << ")!\n";
+        system("pause");
+        return;
+    }
 
     switch (num) {
         case 1:
-            save_txt(filename, flights, n);
+            save_txt(filename, list);
             cout << "Данные сохранены в текст.\n";
             break;
         case 2:
-            save_bin(filename, flights, n);
+            save_bin(filename, list);
             cout << "Данные сохранены в бинарный файл.\n";
             break;
         case 3:
-            txt_append(filename, flights, n);
+            txt_append(filename, list);
             cout << "Данные добавлены в текстовый файл.\n";
             break;
         case 4:
-            bin_append(filename, flights, n); 
+            bin_append(filename, list); 
             cout << "Данные добавлены в бинарный файл.\n";
             break;
     }
     system("pause");
 }
 
-void load_DB(Flight*& flights, int& n) {
+void load_DB(List& list) {
     int choice;
     cout << "\nЗАГРУЗКА ДАННЫХ\n";
     cout << "1. Загрузить из текстового файла\n";
@@ -84,98 +146,78 @@ void load_DB(Flight*& flights, int& n) {
     string filename;
     cout << "Введите имя файла для загрузки: ";
     cin >> filename;
+    if (choice == 1) filename = ensureExtension(filename, ".txt");
+    else filename = ensureExtension(filename, ".bin");
 
     switch (choice) {
         case 1:
-            load_txt(filename, flights, n);
-            cout << "Данные успешно загружены из текста (записей: " << n << ")\n";
+            load_txt(filename, list);
+            cout << "Данные успешно загружены из текста (записей: " << list.size << ")\n";
             break;
         case 2:
-            load_bin(filename, flights, n);
-            cout << "Данные успешно загружены из бинарного файла (записей: " << n << ")\n";
+            load_bin(filename, list);
+            cout << "Данные успешно загружены из бинарного файла (записей: " << list.size << ")\n";
             break;
     }
     system("pause");
 }
 
-void save_txt(const string& filename, Flight* arr, int n) {
+void save_txt(const string& filename, List& list) {
     ofstream file(filename);
     if (!file) { 
         cerr << "Ошибка файла\n"; 
         return; 
     }
-    file << n << '\n';
-    for (int i = 0; i < n; i++)
-        file << arr[i].type << '\n'
-             << arr[i].year << '\n'
-             << arr[i].fuel1000 << '\n'
-             << arr[i].distance << '\n'
-             << arr[i].fuelDay << '\n';
+    file << list.size << '\n';
+    Node* curr = list.head;
+    while (curr) {
+        file << curr->data.type << '\n'
+             << curr->data.year << '\n'
+             << curr->data.fuel1000 << '\n'
+             << curr->data.distance << '\n'
+             << curr->data.fuelDay << '\n';
+        curr = curr->next;
+    }
 }
 
-void load_txt(const string& filename, Flight*& arr, int& n) {
+void load_txt(const string& filename, List& list) {
     ifstream file(filename);
     if (!file) { cerr << "Ошибка открытия файла\n"; return; }
 
-    int batch_n; // Количество записей в одной "порции" файла
+    int batch_n;
 
-    // Читаем в цикле, пока удается считать число (пока не конец файла)
     while (file >> batch_n) {
-        file.ignore(); // Пропускаем перевод строки после числа
+        file.ignore();
 
-        // 1. Создаем временный буфер для текущей порции
-        Flight* temp_arr = new Flight[batch_n];
-
-        // 2. Читаем данные из файла во временный буфер
         for (int i = 0; i < batch_n; i++) {
-            getline(file, temp_arr[i].type);
-            file >> temp_arr[i].year >> temp_arr[i].fuel1000 >> temp_arr[i].distance >> temp_arr[i].fuelDay;
+            Flight f;
+            getline(file, f.type);
+            file >> f.year >> f.fuel1000 >> f.distance >> f.fuelDay;
             file.ignore();
+            pushBack(list, f);
         }
-
-        // 3. Расширяем основной массив (arr), чтобы вместить старые + новые данные
-        int old_n = n;       // Запоминаем текущее количество
-        n += batch_n;        // Увеличиваем счетчик
-        Flight* new_arr = new Flight[n]; // Выделяем новую память
-
-        // Копируем старые данные (если были)
-        for (int i = 0; i < old_n; i++) {
-            new_arr[i] = arr[i];
-        }
-        // Копируем новые данные из временного буфера
-        for (int i = 0; i < batch_n; i++) {
-            new_arr[old_n + i] = temp_arr[i];
-        }
-
-        // 4. Освобождаем старую память и временный буфер
-        delete[] arr;
-        delete[] temp_arr;
-
-        // 5. Переназначаем указатель на новый массив
-        arr = new_arr;
-        
-        // Цикл продолжится, попытается считать следующее число. 
-        // Если файл закончился, цикл while завершится.
     }
 }
 
-void save_bin(const string& filename, Flight* arr, int n) {
+void save_bin(const string& filename, List& list) {
     ofstream file(filename, ios::binary);
     if (!file) { cerr << "Ошибка файла\n"; return; }
 
-    file.write((char*)&n, sizeof(n));
-    for (int i = 0; i < n; i++) {
-        size_t len = arr[i].type.size();
+    file.write((char*)&list.size, sizeof(list.size));
+    Node* curr = list.head;
+    while (curr) {
+        size_t len = curr->data.type.size();
         file.write((char*)&len, sizeof(len));
-        file.write(arr[i].type.c_str(), len);
-        file.write((char*)&arr[i].year, sizeof(int));
-        file.write((char*)&arr[i].fuel1000, sizeof(float));
-        file.write((char*)&arr[i].distance, sizeof(float));
-        file.write((char*)&arr[i].fuelDay, sizeof(float));
+        file.write(curr->data.type.c_str(), len);
+        file.write((char*)&curr->data.year, sizeof(int));
+        file.write((char*)&curr->data.fuel1000, sizeof(float));
+        file.write((char*)&curr->data.distance, sizeof(float));
+        file.write((char*)&curr->data.fuelDay, sizeof(float));
+        curr = curr->next;
     }
 }
 
-void load_bin(const string& filename, Flight*& arr, int& n) {
+void load_bin(const string& filename, List& list) {
     ifstream file(filename, ios::binary);
     if (!file) { cerr << "Ошибка открытия бинарного файла\n"; return; }
 
@@ -183,7 +225,6 @@ void load_bin(const string& filename, Flight*& arr, int& n) {
         int batch_n;
         file.read((char*)&batch_n, sizeof(batch_n));
         
-        // Если не удалось прочитать число (достигнут конец файла или ошибка), выходим
         if (file.fail()) break; 
 
         if (batch_n <= 0 || batch_n > 10000) { 
@@ -191,72 +232,58 @@ void load_bin(const string& filename, Flight*& arr, int& n) {
             break; 
         }
 
-        // Временный буфер
-        Flight* temp_arr = new Flight[batch_n];
-
-        // Чтение порции
         for (int i = 0; i < batch_n; i++) {
+            Flight f;
             size_t len;
             file.read((char*)&len, sizeof(len));
-            if (file.fail() || len > 1000) { 
+            if (file.fail() || len > 50) { 
                 cerr << "Ошибка чтения строки\n"; 
-                delete[] temp_arr; 
                 return; 
             }
 
-            temp_arr[i].type.resize(len);
-            file.read(&temp_arr[i].type[0], len);
-            file.read((char*)&temp_arr[i].year, sizeof(int));
-            file.read((char*)&temp_arr[i].fuel1000, sizeof(float));
-            file.read((char*)&temp_arr[i].distance, sizeof(float));
-            file.read((char*)&temp_arr[i].fuelDay, sizeof(float));
+            f.type.resize(len);
+            file.read(&f.type[0], len);
+            file.read((char*)&f.year, sizeof(int));
+            file.read((char*)&f.fuel1000, sizeof(float));
+            file.read((char*)&f.distance, sizeof(float));
+            file.read((char*)&f.fuelDay, sizeof(float));
+            pushBack(list, f);
         }
-
-        // Объединение массивов (логика такая же, как в текстовом варианте)
-        int old_n = n;
-        n += batch_n;
-        Flight* new_arr = new Flight[n];
-
-        for (int i = 0; i < old_n; i++) new_arr[i] = arr[i];
-        for (int i = 0; i < batch_n; i++) new_arr[old_n + i] = temp_arr[i];
-
-        delete[] arr;
-        delete[] temp_arr;
-        arr = new_arr;
-        
-        // Цикл повторяется для следующего блока данных
     }
 }
 
-void txt_append(const string& filename, Flight* arr, int n) {
+void txt_append(const string& filename, List& list) {
     ofstream file(filename, ios::app);
     if (!file) { cerr << "Ошибка файла\n"; return; }
 
-    // !!! ДОБАВЛЕНО: Пишем количество записей в этот блок !!!
-    file << n << '\n'; 
+    file << list.size << '\n'; 
 
-    for (int i = 0; i < n; i++)
-        file << arr[i].type << '\n'
-             << arr[i].year << '\n'
-             << arr[i].fuel1000 << '\n'
-             << arr[i].distance << '\n'
-             << arr[i].fuelDay << '\n';
+    Node* curr = list.head;
+    while (curr) {
+        file << curr->data.type << '\n'
+             << curr->data.year << '\n'
+             << curr->data.fuel1000 << '\n'
+             << curr->data.distance << '\n'
+             << curr->data.fuelDay << '\n';
+        curr = curr->next;
+    }
 }
 
-void bin_append(const string& filename, Flight* arr, int n) {
+void bin_append(const string& filename, List& list) {
     ofstream file(filename, ios::binary | ios::app);
     if (!file) { cerr << "Ошибка файла\n"; return; }
 
-    // !!! ДОБАВЛЕНО: Пишем количество записей в этот блок !!!
-    file.write((char*)&n, sizeof(n));
+    file.write((char*)&list.size, sizeof(list.size));
 
-    for (int i = 0; i < n; i++) {
-        size_t len = arr[i].type.size();
+    Node* curr = list.head;
+    while (curr) {
+        size_t len = curr->data.type.size();
         file.write((char*)&len, sizeof(len));
-        file.write(arr[i].type.c_str(), len);
-        file.write((char*)&arr[i].year, sizeof(int));
-        file.write((char*)&arr[i].fuel1000, sizeof(float));
-        file.write((char*)&arr[i].distance, sizeof(float));
-        file.write((char*)&arr[i].fuelDay, sizeof(float));
+        file.write(curr->data.type.c_str(), len);
+        file.write((char*)&curr->data.year, sizeof(int));
+        file.write((char*)&curr->data.fuel1000, sizeof(float));
+        file.write((char*)&curr->data.distance, sizeof(float));
+        file.write((char*)&curr->data.fuelDay, sizeof(float));
+        curr = curr->next;
     }
 }

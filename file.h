@@ -5,14 +5,15 @@
 
 using namespace std;
 
-ofstream new_DB(const string& filename);
+void new_DB(const string& filename, int format);
+void create_DB();
 bool remove_DB(const string& filename);
-void clearMem(Flight*& arr, int& n);
-void save_DB(Flight* arr, int &n);
-void save_txt(const string& filename, Flight* arr, int n);
-void save_bin(const string& filename, Flight* arr, int n);
-void load_DB(Flight*& flights, int& n);
-void load_txt(const string& filename, Flight*& arr, int& n);
-void load_bin(const string& filename, Flight*& arr, int& n);
-void txt_append(const string& filename, Flight* arr, int n);
-void bin_append(const string& filename, Flight* arr, int n);
+void clearMem(List& list);
+void save_DB(List& list);
+void save_txt(const string& filename, List& list);
+void save_bin(const string& filename, List& list);
+void load_DB(List& list);
+void load_txt(const string& filename, List& list);
+void load_bin(const string& filename, List& list);
+void txt_append(const string& filename, List& list);
+void bin_append(const string& filename, List& list);

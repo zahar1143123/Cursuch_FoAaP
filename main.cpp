@@ -1,10 +1,9 @@
 #include "menu.h"
 
 int main() {
-    Flight* flights = nullptr;
-    int n = 0;
+    List flights;
 
-    showMenu(flights, n);
+    showMenu(flights);
 
     return 0;
 }

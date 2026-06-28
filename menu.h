@@ -3,4 +3,4 @@
 #include "io.h"
 #include "file.h"
 
-void showMenu(Flight*& flights, int& n);
+void showMenu(List& list);
